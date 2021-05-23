@@ -223,5 +223,4 @@ checkCollisions g@(Game _ rs bs r)
     wc        = (wallCollision $ headPos rs, wallCollision $ headPos bs)
     hc        = headCollision rs bs
     (tcg, tc) = tailCollision g
-    cl        = wc : hc : [tc]
-    res       = join bimap or $ unzip cl
+    res       = join bimap or $ unzip [wc, hc, tc]
