@@ -20,7 +20,7 @@ headShape, segmentShape :: Picture
 headShape = rectangleSolid zoom zoom
 segmentShape = rectangleSolid zoom zoom
 
-groundPic, applePic, starPic, speedUpPic :: Picture
+groundPic, applePic, starPic, orangePic :: Picture
 groundPic = uncurry rectangleSolid $ toPos (maxX * 2 - 1, maxY * 2 - 1)
 applePic = color green $ circleSolid $ 0.42 * zoom
 starPic = color (bright yellow) $ scale (zoom / 2) (zoom / 2) starLine
@@ -36,7 +36,7 @@ starPic = color (bright yellow) $ scale (zoom / 2) (zoom / 2) starLine
         coords = map
                 (\x -> (cos (2 * pi * x / 360), sin (2 * pi * x / 360)))
                 [18, 90 .. 360]
-speedUpPic = color (bright orange) $ circleSolid $ 0.42 * zoom
+orangePic = color (bright orange) $ circleSolid $ 0.42 * zoom
 
 baseColor :: SnekColor -> Color
 baseColor Red  = red
@@ -55,4 +55,4 @@ snekHeadColor c s = case affected s of
 powerUpPic :: PowerUp -> Picture
 powerUpPic (PowerUp Apple  _) = applePic
 powerUpPic (PowerUp Star   _) = starPic
-powerUpPic (PowerUp Orange _) = speedUpPic
+powerUpPic (PowerUp Orange _) = orangePic
