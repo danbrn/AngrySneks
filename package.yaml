@@ -1,0 +1,31 @@
+name:                AngrySneks
+version:             0.1.0.0
+github:              "danbrn/AngrySneks"
+license:             BSD3
+author:              "Daniel Brännvall"
+maintainer:          "daniel@brannvall.net"
+copyright:           "2021 Daniel Brännvall"
+
+extra-source-files:
+- README.md
+
+description:         Dueling snakes!
+
+dependencies:
+- base >= 4.7 && < 5
+- gloss
+- random
+
+library:
+  source-dirs: src
+
+executables:
+  AngrySneks:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - AngrySneks
