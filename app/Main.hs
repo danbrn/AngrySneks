@@ -22,17 +22,18 @@ handleKeys (EventKey (Char 'p') Down _ _) g
     | null $ result g       = pure $ setResult "Paused." g
     | result g == "Paused." = pure $ setResult "" g
     | otherwise             = pure g
-handleKeys (EventKey (Char       'w'  ) Down _ _) g = setDelta Red (0, zoom) g
-handleKeys (EventKey (Char       'a'  ) Down _ _) g = setDelta Red (-zoom, 0) g
-handleKeys (EventKey (Char       's'  ) Down _ _) g = setDelta Red (0, -zoom) g
-handleKeys (EventKey (Char       'd'  ) Down _ _) g = setDelta Red (zoom, 0) g
-handleKeys (EventKey (SpecialKey KeyUp) Down _ _) g = setDelta Blue (0, zoom) g
+handleKeys (EventKey (Char 'w') Down _ _) g = queueDirection Red North g
+handleKeys (EventKey (Char 'a') Down _ _) g = queueDirection Red West g
+handleKeys (EventKey (Char 's') Down _ _) g = queueDirection Red South g
+handleKeys (EventKey (Char 'd') Down _ _) g = queueDirection Red East g
+handleKeys (EventKey (SpecialKey KeyUp) Down _ _) g =
+    queueDirection Blue North g
 handleKeys (EventKey (SpecialKey KeyLeft) Down _ _) g =
-    setDelta Blue (-zoom, 0) g
+    queueDirection Blue West g
 handleKeys (EventKey (SpecialKey KeyDown) Down _ _) g =
-    setDelta Blue (0, -zoom) g
+    queueDirection Blue South g
 handleKeys (EventKey (SpecialKey KeyRight) Down _ _) g =
-    setDelta Blue (zoom, 0) g
+    queueDirection Blue East g
 handleKeys _ g = pure g
 
 update :: Float -> Game -> IO Game

@@ -3,7 +3,9 @@
 module Game where
 
 import           Control.Monad                  ( join )
-import           Data.Bifunctor                 ( bimap )
+import           Data.Bifunctor                 ( Bifunctor(first, second)
+                                                , bimap
+                                                )
 import           System.Random                  ( getStdRandom
                                                 , random
                                                 , randomR
@@ -24,15 +26,16 @@ data Snek = Snek
     { headPos    :: Pos
     , tailLength :: Int
     , tailSegs   :: [Pos]
-    , velocity   :: Velocity
-    , delta      :: [Velocity]
+    , direction  :: Direction
+    , dQueue     :: [Direction]
     , moveTimer  :: Float
     , affected   :: Maybe Effect
     }
 
 type Pos = (Float, Float)
 
-type Velocity = Pos
+data Direction = North | West | South | East
+  deriving Eq
 
 data SnekColor = Red | Blue
 
@@ -77,15 +80,17 @@ cutSnek c p g =
             (setSnekLength (min (length ts) (length $ takeWhile (/= p) ts)) s)
             g
 
-setDelta :: SnekColor -> (Float, Float) -> Game -> IO Game
-setDelta Red  v' (Game pu rs bs r) = pure $ Game pu (setSnekDelta v' rs) bs r
-setDelta Blue v' (Game pu rs bs r) = pure $ Game pu rs (setSnekDelta v' bs) r
+queueDirection :: SnekColor -> Direction -> Game -> IO Game
+queueDirection Red d (Game pu rs bs r) =
+    pure $ Game pu (queueSnekDirection d rs) bs r
+queueDirection Blue d (Game pu rs bs r) =
+    pure $ Game pu rs (queueSnekDirection d bs) r
 
 gameInit :: Game
 gameInit = Game
     (PowerUp Apple (0, 0))
-    (Snek (toPos (minX + 5, maxY - 5)) snekLength [] (0, -zoom) [] 0 Nothing)
-    (Snek (toPos (maxX - 5, minY + 5)) snekLength [] (0, zoom) [] 0 Nothing)
+    (Snek (toPos (minX + 5, maxY - 5)) snekLength [] South [] 0 Nothing)
+    (Snek (toPos (maxX - 5, minY + 5)) snekLength [] North [] 0 Nothing)
     "[N]ew game, [Q]uit"
 
 newGame :: Game
@@ -101,39 +106,48 @@ toPos (x, y) = (zoom * fromIntegral x, zoom * fromIntegral y)
 -- Snek ------------------------------------------------------------------------
 
 moveSnek :: Float -> Snek -> Snek
-moveSnek dt s@(Snek h tl ts v d mt a) = if sp * t' >= 1
-    then setSnekHeading $ Snek h' tl (take tl $ h : ts) v d (t' - 1 / sp) a
-    else Snek h tl ts v d t' a
+moveSnek dt s@(Snek h tl ts d q mt a) = if sp * t' >= 1
+    then setSnekDirection $ Snek h' tl (take tl $ h : ts) d q (t' - 1 / sp) a
+    else Snek h tl ts d q t' a
   where
     sp =
         if s `isAffectedBy` Orange then snekSpeed * speedUpFactor else snekSpeed
     t' = mt + dt
-    h' = bimap (fst v +) (snd v +) h
+    h' = case d of
+        North -> second (zoom +) h
+        West  -> first (negate zoom +) h
+        South -> second (negate zoom +) h
+        East  -> first (zoom +) h
 
 growSnek :: Snek -> Snek
 growSnek s = setSnekLength (tailLength s + appleGrowth) s
 
 setSnekLength :: Int -> Snek -> Snek
-setSnekLength tl (Snek h _ ts v d mt a) = Snek h tl ts v d mt a
+setSnekLength tl (Snek h _ ts d q mt a) = Snek h tl ts d q mt a
 
 applyPowerUp :: PowerUpType -> Snek -> Snek
-applyPowerUp pu s@(Snek h tl ts v d mt _) = case pu of
+applyPowerUp pu s@(Snek h tl ts d q mt _) = case pu of
     Apple -> growSnek s
-    _     -> Snek h tl ts v d mt (Just $ Effect pu powerUpTicks)
+    _     -> Snek h tl ts d q mt (Just $ Effect pu powerUpTicks)
 
-setSnekDelta :: (Float, Float) -> Snek -> Snek
-setSnekDelta v' s@(Snek h tl ts v d mt a)
-    | v == join bimap negate v' = s
-    | otherwise                 = Snek h tl ts v (d ++ [v']) mt a
+queueSnekDirection :: Direction -> Snek -> Snek
+queueSnekDirection d' s@(Snek h tl ts d q mt a) =
+    Snek h tl ts d (q ++ [d']) mt a
 
-setSnekHeading :: Snek -> Snek
-setSnekHeading s@(Snek h tl ts v d mt a)
-    | null d'   = s
-    | otherwise = Snek h tl ts (head d) (tail d) mt a
-    where d' = dropWhile (\x -> v == x || join bimap negate v == x) d
+can'tTurnTo :: Direction -> Direction -> Bool
+can'tTurnTo x North = x == North || x == South
+can'tTurnTo x West  = x == East || x == West
+can'tTurnTo x South = x == North || x == South
+can'tTurnTo x East  = x == East || x == West
+
+setSnekDirection :: Snek -> Snek
+setSnekDirection (Snek h tl ts d q mt a)
+    | null q'   = Snek h tl ts d [] mt a
+    | otherwise = Snek h tl ts (head q') (tail q') mt a
+    where q' = dropWhile (d `can'tTurnTo`) q
 
 tickSnek :: Snek -> Snek
-tickSnek (Snek h tl ts v d mt a) = Snek h tl ts v d mt (tickPowerUp a)
+tickSnek (Snek h tl ts d q mt a) = Snek h tl ts d q mt (tickPowerUp a)
 
 isAffectedBy :: Snek -> PowerUpType -> Bool
 isAffectedBy s pu = case effect <$> affected s of
